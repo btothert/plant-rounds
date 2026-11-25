@@ -245,7 +245,7 @@
   .rec .t{font-weight:700}
   .rec .m{font-size:14px;color:var(--muted)}
   .badge{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px;margin-left:6px}
-  .badge.r{background:var(--red-soft);color:var(--red)} .badge.g{background:var(--green-soft);color:var(--green)}
+  .badge.r{background:var(--red-soft);color:var(--red)} .badge.g{background:var(--green-soft);color:var(--green)} .badge.a{background:var(--amber-soft);color:var(--amber)}
   .kv{display:grid;grid-template-columns:1fr auto;gap:2px 16px;font-size:15px}
   .kv div:nth-child(odd){color:var(--muted)}
   .kv .bad{color:var(--red);font-weight:700}
@@ -637,6 +637,8 @@ const LS = {
 let settings = Object.assign({}, DEFAULT_SETTINGS, LS.get("ncw2_settings", {}));
 let PAGES = buildPages(settings);
 let records = LS.get("ncw2_records", []);
+// Rounds submitted before the daily report existed are marked "old" and only sent if asked.
+if (!LS.get("ncw2_sendInit", false)) { records.forEach(r=>{ if (r.sent===undefined) r.sent="old"; }); LS.set("ncw2_records", records); LS.set("ncw2_sendInit", true); }
 let draft = LS.get("ncw2_draft", null) || newDraft();
 let view = "home";
 let pageId = LS.get("ncw2_page", "shift");
@@ -1063,18 +1065,19 @@ function recordFlags(r){ return withDraft(r, ()=>allFields().filter(f=>isFlag(f,
 function renderRecords(){
   const list = records.map(r=>{
     const n = recordFlags(r);
-    return `<div class="rec" data-rec="${r.id}"><div class="t">${esc(fmtDate(r.f.date))} · ${esc(r.f.shift||"?")} shift ${n?`<span class="badge r">${n} flagged</span>`:`<span class="badge g">OK</span>`}<span class="badge ${withDraft(r, ()=>qrDone()===qrTotal())?"g":"r"}">QR ${withDraft(r, ()=>qrDone())}/${withDraft(r, ()=>qrTotal())}</span>${Object.keys(r.f).some(k=>/^pf/.test(k))?`<span class="badge r">⚡ power failure steps logged</span>`:""}</div>
+    return `<div class="rec" data-rec="${r.id}"><div class="t">${esc(fmtDate(r.f.date))} · ${esc(r.f.shift||"?")} shift ${n?`<span class="badge r">${n} flagged</span>`:`<span class="badge g">OK</span>`}<span class="badge ${withDraft(r, ()=>qrDone()===qrTotal())?"g":"r"}">QR ${withDraft(r, ()=>qrDone())}/${withDraft(r, ()=>qrTotal())}</span>${Object.keys(r.f).some(k=>/^pf/.test(k))?`<span class="badge r">⚡ power failure steps logged</span>`:""}${r.sent===true?`<span class="badge g">Sent ✓</span>`:r.sent===false?`<span class="badge a">Waiting to send</span>`:""}</div>
       <div class="m">${esc(r.f.prevOp||"—")} → ${esc(r.f.incOp||"—")} · submitted ${new Date(r.submitted).toLocaleString([], {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})}</div></div>`;
   }).join("");
   $("#main").innerHTML = `<section class="card">
     <div class="page-title"><h2><b>Records</b></h2><span class="tag">${records.length} saved on this iPad</span></div>
     ${list || `<p class="muted">No submitted rounds yet. Submitted rounds will appear here.</p>`}
+    ${sendStatus()}
     <div class="btnrow">
       <button class="btn primary" id="copyCsv" ${records.length?"":"disabled"}>Copy all as CSV</button>
       <button class="btn" id="copyJson" ${records.length?"":"disabled"}>Copy all as JSON</button>
       <button class="btn" id="settingsBtn">Settings</button>
     </div>
-    <p class="hint">Records are kept in this browser on this iPad. Copy them into a spreadsheet regularly. A later version can send each round to a Google Sheet automatically.</p>
+    <p class="hint">Records are kept in this browser on this iPad. With the Google script link set in Settings, each submitted round is also sent to the Rounds Google Sheet and the daily report email.</p>
     <textarea class="copybox" id="copyOut" readonly hidden></textarea>
   </section>`;
 }
@@ -1105,7 +1108,7 @@ function renderSettings(){
     <div class="page-title"><h2><b>Settings</b></h2></div>
     <div class="field"><label>Operators</label><div><textarea class="ctl" id="setOps" style="min-height:150px">${esc(settings.operators.join("\n"))}</textarea><div class="hint">One name per line. Used in the operator dropdowns.</div></div></div>
     <div class="field"><label>Out-of-service filters</label><div><input class="ctl" id="setOos" value="${esc(settings.oosFilters.join(", "))}"><div class="hint">Filter numbers, separated by commas. These show as OOS on the NTU page.</div></div></div>
-    <div class="field"><label>Lake temperature link</label><div><input class="ctl" id="setLake" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(settings.lakeUrl||"")}" autocomplete="off"><div class="hint">The web address of the Lake Temperature Google script. Leave blank to type the lake temperature by hand.</div></div></div>
+    <div class="field"><label>Google script link</label><div><input class="ctl" id="setLake" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(settings.lakeUrl||"")}" autocomplete="off"><div class="hint">The web address of the Lake Temperature Google script (ends in /exec). It fills in the lake temperature and receives each submitted round for the daily report. Leave blank to work on this iPad only.</div></div></div>
     <div class="field"><label>Filter NTU limit</label><input class="ctl" id="setNtu" inputmode="decimal" value="${settings.ntuLimit}"></div>
     <div class="field"><label>Free residual range</label><div style="display:flex;gap:10px;align-items:center"><input class="ctl" id="setMin" inputmode="decimal" value="${settings.freeMin}"> to <input class="ctl" id="setMax" inputmode="decimal" value="${settings.freeMax}"></div></div>
     <p class="hint" style="margin-top:14px">Offline mode: ${offlineReady ? "<b style='color:var(--green)'>Ready</b> — this iPad can open the app and scan with no Wi-Fi." : "Not active here. It turns on when the app is opened from the GitHub Pages link while online."}</p>
@@ -1389,6 +1392,58 @@ setInterval(()=>fetchLake(false), 30*60*1000);
 window.addEventListener("online", ()=>fetchLake(false));
 
 /* ============================================================
+   SEND ROUNDS — each submitted round goes to the Google script
+   (Rounds sheet + daily report email). Waits on the iPad until online.
+   ============================================================ */
+function roundPayload(r){
+  return withDraft(r, ()=>({
+    type:"round", id:r.id, submitted:r.submitted,
+    date:r.f.date||"", shift:r.f.shift||"", prevOp:r.f.prevOp||"", incOp:r.f.incOp||"",
+    lake:r.f.lake_f||"", notes:r.f.notes||"",
+    flagged: allFields().filter(f=>!f.qr && isFlag(f, val(f.key))).map(f=>`${pageById(f.page).tab}: ${f.label} = ${val(f.key)}`),
+    scans: QR_ITEMS.map(q=>{
+      const sc = scansOf(q.id), need = q.rule==="round" || r.f.shift==="3rd";
+      const status = !sc.length ? (need ? "missed" : "na") : sc.some(x=>x.m==="manual") ? "manual" : qrFlag(q.id) ? "late" : "ok";
+      return {id:q.id, name:q.name, loc:q.loc, times:qrSummary(q.id), status};
+    })
+  }));
+}
+function sendStatus(){
+  const waiting = records.filter(r=>r.sent===false).length, old = records.filter(r=>r.sent==="old").length;
+  if (!settings.lakeUrl) return records.length ? `<p class="hint">Rounds aren't sent anywhere yet — add the Google script link in Settings for the daily report.</p>` : "";
+  let h = waiting
+    ? `<div class="alert amber" style="margin-top:12px">${waiting} round${waiting>1?"s":""} waiting to send. ${navigator.onLine?"":"No connection — "}They send by themselves when the iPad is online. <button class="sameall" id="sendNow">Send now</button></div>`
+    : (records.some(r=>r.sent===true) ? `<p class="hint" style="color:var(--green)">All rounds sent to Google ✓</p>` : "");
+  if (old) h += `<p class="hint">${old} round${old>1?"s":""} from before the daily report ${old>1?"were":"was"} not sent. <button class="sameall" id="sendOld">Send ${old>1?"them":"it"}</button></p>`;
+  return h;
+}
+let sending = false;
+async function sendRounds(manual){
+  const url = settings.lakeUrl;
+  if (!url){ if (manual) toast("Add the Google script link in Settings first"); return; }
+  if (sending) return;
+  const queue = records.filter(r=>r.sent===false).reverse();   // oldest first
+  if (!queue.length) return;
+  if (!navigator.onLine){ if (manual) toast("No connection — rounds will send when the iPad is online"); return; }
+  sending = true; let sent = 0;
+  try {
+    for (const r of queue){
+      try {
+        const res = await fetch(url, {method:"POST", body: JSON.stringify(roundPayload(r))});
+        const d = await res.json();
+        if (d && d.ok){ r.sent = true; sent++; LS.set("ncw2_records", records); }
+        else break;
+      } catch(e){ break; }
+    }
+  } finally { sending = false; }
+  if (manual || sent) toast(sent ? `Sent ${sent} round${sent>1?"s":""} to Google` : "Couldn't reach the Google script — will try again later");
+  if (view==="records") render();
+}
+setTimeout(()=>sendRounds(false), 1500);
+setInterval(()=>sendRounds(false), 5*60*1000);
+window.addEventListener("online", ()=>setTimeout(()=>sendRounds(false), 1000));
+
+/* ============================================================
    TALK TO TYPE — tap a number box, then the blue mic, then say the number
    ============================================================ */
 const inFrame = (()=>{ try { return window.top !== window; } catch(e){ return true; } })();
@@ -1645,6 +1700,8 @@ document.addEventListener("click", e=>{
     case "submitBtn": return submit();
     case "clearBtn": return confirmBox("Clear everything on this form and start over?", "Clear form", ()=>{ draft=newDraft(); save(); goPage("shift"); });
     case "copyCsv": return copyText(toCSV());
+    case "sendNow": return sendRounds(true);
+    case "sendOld": return confirmBox("Send the rounds that were submitted before the daily report was set up? They'll be added to the Rounds sheet.", "Send them", ()=>{ records.forEach(r=>{ if (r.sent==="old") r.sent=false; }); LS.set("ncw2_records", records); render(); sendRounds(true); });
     case "copyJson": return copyText(JSON.stringify(records.map(r=>({...r, photos: r.photos.length})), null, 2));
     case "settingsBtn": view="settings"; return render();
     case "backRecs": view = (view==="settings" && !openRecordId) ? "home" : "records"; return render();
@@ -1664,11 +1721,12 @@ function submit(){
   const missing = allFields().filter(f=>!f.optional && !filled(f.key));
   const doIt = () => {
     recalc();
-    const rec = {...draft, submitted: new Date().toISOString()};
+    const rec = {...draft, submitted: new Date().toISOString(), sent: settings.lakeUrl ? false : "old"};
     records.unshift(rec);
     if (!LS.set("ncw2_records", records)) toast("Couldn’t save — storage full");
     draft = newDraft(); save(); pageId = "shift"; LS.set("ncw2_page", pageId);
     toast("Round submitted"); view="home"; render();
+    setTimeout(()=>sendRounds(false), 300);
   };
   if (pageId !== "review") return goPage("review");
   if (missing.length) confirmBox(`${missing.length} required item${missing.length>1?"s are":" is"} still empty. Submit anyway?`, "Submit anyway", doIt);
