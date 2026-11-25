@@ -308,6 +308,9 @@
   .page-title .ticon.logo{filter:none;background:none;max-height:72px;max-width:120px}
   .page-title .ticon.dpd{max-height:96px} .page-title .ticon.turb{max-height:130px}
   .ov .olbl{color:#9b1c14!important} .ov .olbl.dark{color:#1c1c1e!important}
+  /* Home screen app: leave room for the iPad window buttons at the top left */
+  @media (display-mode: standalone){ .top-row .brand{padding-left:64px} }
+  body.standalone .top-row .brand{padding-left:64px}
 </style>
 </head>
 <body>
@@ -1152,6 +1155,7 @@ function applyTheme(){
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? "#101115" : "#0a64d8";
 }
 applyTheme(); setInterval(applyTheme, 5*60*1000);
+try { if (navigator.standalone || matchMedia("(display-mode: standalone)").matches) document.body.classList.add("standalone"); } catch(e){}
 const THEME_NAMES = {auto:"Auto (dark 7 PM – 7 AM)", dark:"Night mode on", light:"Night mode off"};
 function updateNarrow(){
   const z = SIZES[sizeIdx] ? SIZES[sizeIdx].z : 1;

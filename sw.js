@@ -2,7 +2,7 @@
    Keeps a copy of the app on the iPad so it opens with no Wi-Fi.
    When online, it checks for a newer version first (up to 3 seconds), then falls back to the saved copy.
    Change VERSION whenever you upload a new index.html, so old copies are cleaned up. */
-const VERSION = "rounds-v13";
+const VERSION = "rounds-v14";
 const APP_FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 const QR_READER = [
   "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js",
