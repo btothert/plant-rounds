@@ -1455,6 +1455,7 @@ function roundPayload(r){
     date:r.f.date||"", shift:r.f.shift||"", prevOp:r.f.prevOp||"", incOp:r.f.incOp||"",
     lake:r.f.lake_f||"", notes:r.f.notes||"",
     flagged: allFields().filter(f=>!f.qr && isFlag(f, val(f.key))).map(f=>`${pageById(f.page).tab}: ${f.label} = ${val(f.key)}`),
+    readings: allFields().filter(f=>!f.qr).map(f=>{ const v = val(f.key); return {label:`${pageById(f.page).tab}: ${f.label}`, v: f.check ? (v ? "Yes" : "") : (v ?? ""), flag: !!isFlag(f, v)}; }),
     scans: QR_ITEMS.map(q=>{
       const sc = scansOf(q.id), need = q.rule==="round" || r.f.shift==="3rd";
       const status = !sc.length ? (need ? "missed" : "na") : sc.some(x=>x.m==="manual") ? "manual" : qrFlag(q.id) ? "late" : "ok";
@@ -1468,6 +1469,8 @@ function sendStatus(){
   let h = waiting
     ? `<div class="alert amber" style="margin-top:12px">${waiting} round${waiting>1?"s":""} waiting to send. ${navigator.onLine?"":"No connection — "}They send by themselves when the iPad is online. <button class="sameall" id="sendNow">Send now</button></div>`
     : (records.some(r=>r.sent===true) ? `<p class="hint" style="color:var(--green)">All rounds sent to Google ✓</p>` : "");
+  const noReadings = records.filter(r=>r.sent===true && !r.sentReadings).length;
+  if (noReadings) h += `<p class="hint">Readings for rounds sent before the Readings tab existed aren't in the Google Sheet yet. <button class="sameall" id="sendReadings">Send their readings</button></p>`;
   if (old) h += `<p class="hint">${old} round${old>1?"s":""} from before the daily report ${old>1?"were":"was"} not sent. <button class="sameall" id="sendOld">Send ${old>1?"them":"it"}</button></p>`;
   return h;
 }
@@ -1485,7 +1488,7 @@ async function sendRounds(manual){
       try {
         const res = await fetch(url, {method:"POST", body: JSON.stringify(roundPayload(r))});
         const d = await res.json();
-        if (d && d.ok){ r.sent = true; sent++; LS.set("ncw2_records", records); }
+        if (d && d.ok){ r.sent = true; r.sentReadings = true; sent++; LS.set("ncw2_records", records); }
         else break;
       } catch(e){ break; }
     }
@@ -1761,6 +1764,7 @@ document.addEventListener("click", e=>{
     case "clearBtn": return withPin(()=>confirmBox("Clear everything on this form and start over? This can't be undone.", "Clear form", ()=>{ draft=newDraft(); save(); goPage("shift"); }));
     case "copyCsv": return copyText(toCSV());
     case "sendNow": return sendRounds(true);
+    case "sendReadings": records.forEach(r=>{ if (r.sent===true && !r.sentReadings) r.sent=false; }); LS.set("ncw2_records", records); render(); return sendRounds(true);
     case "sendOld": return confirmBox("Send the rounds that were submitted before the daily report was set up? They'll be added to the Rounds sheet.", "Send them", ()=>{ records.forEach(r=>{ if (r.sent==="old") r.sent=false; }); LS.set("ncw2_records", records); render(); sendRounds(true); });
     case "copyJson": return copyText(JSON.stringify(records.map(r=>({...r, photos: r.photos.length})), null, 2));
     case "settingsBtn": return withPin(()=>{ view="settings"; render(); });
