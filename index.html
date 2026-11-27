@@ -29,6 +29,7 @@
     color-scheme:dark;
   }
   *{box-sizing:border-box}
+  html,body{overscroll-behavior-y:none}
   html,body{margin:0;background:var(--bg);color:var(--ink);
     font:17px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
     -webkit-text-size-adjust:100%}
@@ -227,7 +228,8 @@
   .pager{flex:1;text-align:center;font-size:14px;color:var(--muted)}
   .bar{height:6px;background:var(--track);border-radius:3px;margin-top:6px;overflow:hidden}
   .bar i{display:block;height:100%;background:var(--green);border-radius:3px;transition:width .25s}
-  .saved{font-size:12px;color:var(--green)}
+  .saved{font-size:12px;color:var(--green);position:absolute;right:2px;bottom:-15px;pointer-events:none;line-height:1}   /* takes no space, so the header never changes height */
+  .top-row{position:relative}
   .stat{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
   .stat div{background:var(--bg);border-radius:12px;padding:14px;text-align:center}
   .stat b{display:block;font-size:28px}
@@ -687,7 +689,7 @@ const pageById = id => PAGES.find(p=>p.id===id) || PAGES[0];
 function fieldsOf(page){
   const out = [];
   const opt = page.detail ? true : null;
-  const push = (o) => out.push(Object.assign({page:page.id}, o, page.required ? {optional:!!o.computed || !!o.qrOpt} : opt!=null ? {optional:true} : {}));
+  const push = (o) => o.key && out.push(Object.assign({page:page.id}, o, page.required ? {optional:!!o.computed || !!o.qrOpt} : opt!=null ? {optional:true} : {}));
   const walk = (items) => items.forEach(it=>{
     if (it.type==="grid"){
       if (it.timeRow) it.cols.forEach((c,ci)=>push({key:`${it.key}_time_${ci}`, label:`Residual time ${c}`, optional:true}));
@@ -697,7 +699,7 @@ function fieldsOf(page){
     } else if (it.type==="pair"){
       [...it.left.rows, ...it.right.rows].forEach(r=>push({key:r.key, label:`${r.label} (${r.key.startsWith("s_")?"1st round":"2nd round"})`, num:true}));
     } else if (it.type==="shift3"){
-      it.items.forEach(x=>push({key:x.key, label:x.label, num:true, optional: val("shift")!=="3rd"}));
+      it.items.forEach(x=>{ if (x.key) push({key:x.key, label:x.label, num:true, optional: val("shift")!=="3rd"}); });   // scan buttons have nothing to fill in
     } else if (it.type==="panel"){
       walk(prefixItems(it.items, stripTags(it.title)+" – "));
     } else if (["row","cols","stack"].includes(it.type)){
@@ -1676,6 +1678,11 @@ document.addEventListener("input", e=>{
   }
   if (e.target.type==="checkbox") return;
   setVal(k, v);
+  const cm = /^(cs|ce)_c([12])$/.exec(k);
+  if (cm && v === "ON"){
+    const other = `${cm[1]}_c${cm[2]==="1"?"2":"1"}`;
+    if (!val(other)){ setVal(other, "OFF"); const o = document.querySelector(`[data-k="${other}"]`); if (o) o.value = "OFF"; }
+  }
   if (k==="lake_f"){ setVal("lake_auto",""); setVal("lake_src", v ? "Entered by operator" : ""); }
   if (["ch_shc_b1","ch_shc_b2"].includes(k)){ recalc(); const t = document.querySelector('[data-k="ch_shc_total"]'); if (t){ t.value = val("ch_shc_total")||""; const n=parseFloat(t.value); t.classList.toggle("flag", !isNaN(n) && n<1500); t.classList.toggle("ok", !isNaN(n) && n>=1500);} }
   refreshTabDots(); renderPager();
@@ -1743,7 +1750,7 @@ document.addEventListener("click", e=>{
     case "next": return step(1);
     case "qrBtn": return openScanner();
     case "contBtn": return goPage(started_page());
-    case "newBtn": return confirmBox("Start a new round? The round in progress will be cleared.", "Start new", ()=>{ draft = newDraft(); save(); pageId = "shift"; LS.set("ncw2_page", pageId); goPage("shift"); });
+    case "newBtn": return withPin(()=>confirmBox("Start a new round? The round in progress will be cleared.", "Start new", ()=>{ draft = newDraft(); save(); pageId = "shift"; LS.set("ncw2_page", pageId); goPage("shift"); }));
     case "recTile": view = "records"; return render();
     case "setTile": return withPin(()=>{ view = "settings"; render(); });
     case "themeBtn": { const order = ["auto","dark","light"]; theme = order[(order.indexOf(theme)+1)%3]; LS.set("ncw2_theme", theme); applyTheme(); toast(THEME_NAMES[theme]); if (view==="home") render(); return; }
@@ -1751,7 +1758,7 @@ document.addEventListener("click", e=>{
     case "sizeBtn": sizeIdx = (sizeIdx + 1) % SIZES.length; LS.set("ncw2_size", sizeIdx); applySize(true); return;
     case "recordsBtn": view = view==="form" ? "records" : "form"; return render();
     case "submitBtn": return submit();
-    case "clearBtn": return confirmBox("Clear everything on this form and start over?", "Clear form", ()=>{ draft=newDraft(); save(); goPage("shift"); });
+    case "clearBtn": return withPin(()=>confirmBox("Clear everything on this form and start over? This can't be undone.", "Clear form", ()=>{ draft=newDraft(); save(); goPage("shift"); }));
     case "copyCsv": return copyText(toCSV());
     case "sendNow": return sendRounds(true);
     case "sendOld": return confirmBox("Send the rounds that were submitted before the daily report was set up? They'll be added to the Rounds sheet.", "Send them", ()=>{ records.forEach(r=>{ if (r.sent==="old") r.sent=false; }); LS.set("ncw2_records", records); render(); sendRounds(true); });
