@@ -129,6 +129,7 @@
   .lakeunit{font-weight:700;color:var(--muted)}
   .micbtn{position:absolute;z-index:40;width:46px;height:46px;border-radius:50%;border:0;background:var(--blue);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.25);display:none;place-items:center}
   .micbtn.show{display:grid}
+  .micbtn,.micbtn.show,.micmsg,.micmsg.show{display:none!important}   /* talk-to-type turned off */
   .micbtn svg{width:24px;height:24px}
   .clearbtn{position:absolute;z-index:39;width:26px;height:26px;border-radius:50%;border:0;padding:0;background:#b9bec6;color:#fff;font-size:17px;font-weight:800;line-height:26px;text-align:center;display:none}
   .clearbtn.show{display:block}
@@ -268,6 +269,10 @@
   body.narrow .page-title h2{font-size:22px}
   body.narrow .card{padding:18px 16px}
   body.narrow .navbtn{min-width:90px}
+  body.narrow .cols{grid-template-columns:1fr}
+  body.narrow .cols>.stack{grid-template-columns:1fr 1fr;gap:14px}
+  body.narrow .brand h1{font-size:18px;line-height:1.15}
+  body.narrow .top-row{gap:8px}
   /* ---------- new look ---------- */
   :root{transition:background .2s}
   .ov>img,.hero,.ticon,.homehero{filter:var(--imgdim)}
@@ -323,8 +328,7 @@
     <span class="saved" id="saved"></span>
     <button class="pill iconbtn" id="homeBtn" aria-label="Home"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 3 2 11.5h3V21h6v-6h2v6h6v-9.5h3z"/></svg></button>
     <button class="pill qrpill" id="qrBtn" aria-label="Scan QR code"></button>
-    <button class="pill" id="sizeBtn" aria-label="Text size">A<span style="font-size:1.25em">A</span></button>
-    <button class="pill iconbtn" id="themeBtn" aria-label="Night mode"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5a8.5 8.5 0 1 0 11.1 11.1z"/></svg></button>
+        <button class="pill iconbtn" id="themeBtn" aria-label="Night mode"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5a8.5 8.5 0 1 0 11.1 11.1z"/></svg></button>
   </div>
   <nav class="tabs" id="tabs"></nav>
 </header>
@@ -383,7 +387,7 @@ const QR_ITEMS = [
   {id:"HYPO-PUMP",      name:"Sodium Hypochlorite Pump Room", loc:"Outside SHC Pump Room (Room 13)",              short:"Room 13", rule:"round", go:"rest"},
   {id:"HYPO-TANK",      name:"Sodium Hypochlorite Tank Room", loc:"SHC Bulk Tank Area (Room 14)",                 short:"Room 14", rule:"round", go:"rest"},
   {id:"CHEM-DAY-LOWER", name:"Lower Chemical Day Tanks",    loc:"Chemical Bulk Tank Area (Room 304)",             short:"Room 304", rule:"round", go:"rest"},
-  {id:"RAW-WATER-UPPER",name:"Upper Raw Water Room",        loc:"Upper Raw Water Room (Room 303)",                short:"Room 303", rule:"round", go:"rest", midnight:true},
+  {id:"RAW-WATER-UPPER",name:"Upper Raw Water Room",        loc:"Upper Raw Water Room (Room 303)",                short:"Room 303", rule:"round", go:"rest"},
   {id:"ABBVIE-BADGER",  name:"Abbvie Badger Readings",      loc:"Upper Raw Water Room (Room 303)",                short:"Abbvie Badger", rule:"shift3", go:"ntu", anchor:"q-x-ABBVIE-BADGER", midnight:true},
   {id:"CITY-TOTALIZER", name:"City Totalizer",              loc:"Bottom Filter 8-11 Gallery - lower level (Room 409)", short:"City Totalizer", rule:"shift3", go:"ntu", anchor:"q-x-ABBVIE-BADGER", midnight:true},
 ];
@@ -463,9 +467,9 @@ function buildPages(S){
   ]});
   const dhBlock = (p, title, room, qr) => ({type:"panel", id:`panel_${p}`, qr:[qr], title:`${title} <span class="muted" style="font-weight:400">(${room})</span>`, items:[
     {type:"cols", items:[
-      {type:"overlay", img:"dh", fs:5.6, labels:[{x:40,y:28,text:"Runtime Hrs",cls:"dark"}], fields:[
+      {type:"overlay", img:"dh", fs:5.6, labels:[{x:37,y:28,text:"Runtime Hrs",cls:"dark"}], fields:[
         {x:25,y:44.5,w:30,h:8, item:{type:"number", key:`${p}_hrs`, label:"Runtime Hrs"}},
-        {x:58,y:30.5,w:41,h:8, fs:5, item:{type:"select", key:`${p}_mode`, label:"Status", options:CHOICES.dehum}},
+        {x:61,y:30.5,w:38,h:8, fs:5, item:{type:"select", key:`${p}_mode`, label:"Status", options:CHOICES.dehum}},
       ]},
       {type:"stack", items:[
         {type:"overlay", img:"process", fs:9, fields:[{x:30,y:60,w:40,h:12, item:{type:"number", key:`${p}_process`, label:"Process (in. W.C.)"}}]},
@@ -489,9 +493,9 @@ function buildPages(S){
   ]},
   { id:"scada", tab:"SCADA Levels", title:"SCADA Levels", items:[
     {type:"lake"},
-    {type:"sec", text:"Start of the Shift"},
+    {type:"sec", text:"1st Round"},
     {type:"pair", left:{title:"Levels", rows:scadaRows("s")}, right:{title:"SHC @ shift change", rows:pumps("s")}, hintFrom:"e"},
-    {type:"sec", text:"End of the Shift"},
+    {type:"sec", text:"2nd Round"},
     {type:"pair", left:{title:"Levels", rows:scadaRows("e")}, right:{title:"SHC @ shift change", rows:pumps("e"), sameFrom:"s_"}},
     {type:"links", links:[{to:"chem", label:"Detailed Tank Levels"}]},
   ]},
@@ -504,7 +508,7 @@ function buildPages(S){
       {key:"atot", label:"Abbvie Total", unit:"mg/L"},
     ], minFilled:1},
   ]},
-  { id:"start1", tab:"Start Round", title:"<b>Start</b> of Shift Round", items:[
+  { id:"start1", tab:"1st Round", title:"<b>1st</b> Round", items:[
     {type:"sec", text:"Operators office", room:"115"},
     {type:"check", key:"s_walkie", html:"Take possession of your <b>Walkie Talkie</b> tuned to the proper channel."},
     {type:"check", key:"s_speak", html:"Verbally speak with the preceding operator concerning the Water Plant status."},
@@ -520,7 +524,7 @@ function buildPages(S){
     {type:"sec", text:"Work Shop", room:"105"},
     {type:"check", key:"s_westdh", html:"Check that the West dehumidifier is running", links:[{to:"dehum", label:"Detailed"}]},
   ]},
-  { id:"start2", tab:"Start Round 2", title:"<b>Start</b> of Shift Round", tag:"continued", items:[
+  { id:"start2", tab:"1st Cont.", title:"<b>1st</b> Round", tag:"continued", items:[
     ...roundCore("s"),
     {type:"check", key:"s_eastdh", html:"Check that the East dehumidifier is running", links:[{to:"dehum", label:"Detailed"}]},
     ...roundRest("s", true),
@@ -536,7 +540,7 @@ function buildPages(S){
       {type:"number", key:"cityTot", label:"City Totalizer"},
     ]},
   ]},
-  { id:"end1", tab:"End Round", title:"<b>End</b> of Shift Round", items:[
+  { id:"end1", tab:"2nd Round", title:"<b>2nd</b> Round", items:[
     {type:"sec", text:"Operators office", room:"115"},
     {type:"check", key:"e_logs", html:"Make sure all of the operations logs and the Excel spreadsheet on the SCADA is filled out."},
     {type:"check", key:"e_cliff", html:"Print the extra SCADA reports for Cliff", shift3:true},
@@ -550,7 +554,7 @@ function buildPages(S){
     {type:"check", key:"e_westdh", html:"Check that the West dehumidifier is running"},
     ...roundCore("e"),
   ]},
-  { id:"end2", tab:"End Round 2", title:"<b>End</b> of Shift Round", tag:"continued", items:[
+  { id:"end2", tab:"2nd Cont.", title:"<b>2nd</b> Round", tag:"continued", items:[
     {type:"sec", text:"Electrical/Dehumidifier Room", room:"124"},
     {type:"check", key:"e_eastdh", html:"Check that the East dehumidifier is running"},
     ...roundRest("e", false),
@@ -581,8 +585,8 @@ function buildPages(S){
     dhBlock("dhe", "East DH1", "Room 124", "DEHUM-EAST"),
   ]},
   { id:"compressors", tab:"Compressors", detail:true, required:true, back:"start2", title:"<b>North Compressors</b> (305)", items:[
-    compBlock("cs", "START of Shift round"),
-    compBlock("ce", "END of Shift round"),
+    compBlock("cs", "1st Round"),
+    compBlock("ce", "2nd Round"),
   ]},
   { id:"boilers", tab:"Boilers", detail:true, back:"start2", title:"<b>Boilers</b>", items:[
     boilerBlock("be", "East Boiler Room", "305", "BOILER-EAST"),
@@ -691,7 +695,7 @@ function fieldsOf(page){
         key:`${it.key}_${r.key}_${ci}`, label:`${r.label} (${it.timeRow?"#"+c:c})`,
         num:true, min:r.min, max:r.max, optional: it.minFilled ? ci>=it.minFilled : false })); });
     } else if (it.type==="pair"){
-      [...it.left.rows, ...it.right.rows].forEach(r=>push({key:r.key, label:`${r.label} (${r.key.startsWith("s_")?"start":"end"})`, num:true}));
+      [...it.left.rows, ...it.right.rows].forEach(r=>push({key:r.key, label:`${r.label} (${r.key.startsWith("s_")?"1st round":"2nd round"})`, num:true}));
     } else if (it.type==="shift3"){
       it.items.forEach(x=>push({key:x.key, label:x.label, num:true, optional: val("shift")!=="3rd"}));
     } else if (it.type==="panel"){
@@ -702,7 +706,7 @@ function fieldsOf(page){
       walk(it.fields.map(f=>f.item));
     } else if (it.type==="check"){
       push({key:it.key, label:stripTags(it.html), check:true, optional: it.shift3 ? val("shift")!=="3rd" : false});
-      if (it.input) push({key:it.input.key, label:`${it.input.label} (${it.key.startsWith("s")?"start":"end"})`, num:true, min:it.input.min, max:it.input.max});
+      if (it.input) push({key:it.input.key, label:`${it.input.label} (${it.key.startsWith("s")?"1st round":"2nd round"})`, num:true, min:it.input.min, max:it.input.max});
     } else if (it.type==="radio"){
       push({key:it.key, label:stripTags(it.label), optional:!it.required && !page.pf});
     } else if (["date","select"].includes(it.type)){
@@ -769,7 +773,7 @@ function qrFlag(id){
   return false;
 }
 function qrSummary(id){
-  return scansOf(id).map(x=>fmtTime(x.t) + (x.ph==="s"?" start":x.ph==="e"?" end":"") + (x.m==="manual"?" (manual)":"")).join(", ");
+  return scansOf(id).map(x=>fmtTime(x.t) + (x.ph==="s"?" 1st round":x.ph==="e"?" 2nd round":"") + (x.m==="manual"?" (manual)":"")).join(", ");
 }
 function recalcScans(){
   draft.scans ||= {};
@@ -922,7 +926,7 @@ function renderItem(it){
     }
     case "pair": {
       const prev = lastRec();
-      const col = (side) => `<div><div class="note" style="font-weight:600;color:var(--ink);margin-left:0">${side.title}${side.sameFrom ? ` <button class="sameall" data-copyall="${side.rows.map(r=>side.sameFrom+r.key.replace(/^[a-z]+_/,"")+">"+r.key).join(",")}">✓ All same as start</button>` : ""}</div>${side.rows.map(r=>{
+      const col = (side) => `<div><div class="note" style="font-weight:600;color:var(--ink);margin-left:0">${side.title}${side.sameFrom ? ` <button class="sameall" data-copyall="${side.rows.map(r=>side.sameFrom+r.key.replace(/^[a-z]+_/,"")+">"+r.key).join(",")}">✓ All same as 1st Round</button>` : ""}</div>${side.rows.map(r=>{
         let ph = "";
         if (it.hintFrom && prev){ const pk = r.key.replace(/^s_/, it.hintFrom+"_"); if (prev.f[pk]!=null) ph = "last: "+prev.f[pk]; }
         if (side.sameFrom){
@@ -1112,6 +1116,12 @@ function renderSettings(){
     <div class="field"><label>Filter NTU limit</label><input class="ctl" id="setNtu" inputmode="decimal" value="${settings.ntuLimit}"></div>
     <div class="field"><label>Free residual range</label><div style="display:flex;gap:10px;align-items:center"><input class="ctl" id="setMin" inputmode="decimal" value="${settings.freeMin}"> to <input class="ctl" id="setMax" inputmode="decimal" value="${settings.freeMax}"></div></div>
     <p class="hint" style="margin-top:14px">Offline mode: ${offlineReady ? "<b style='color:var(--green)'>Ready</b> — this iPad can open the app and scan with no Wi-Fi." : "Not active here. It turns on when the app is opened from the GitHub Pages link while online."}</p>
+    <div class="field"><label>Settings PIN</label><div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><input class="ctl" id="setPin" type="password" inputmode="numeric" autocomplete="new-password" placeholder="${settings.pinHash ? "New PIN" : "Choose a PIN"}" style="max-width:170px">
+      <input class="ctl" id="setPin2" type="password" inputmode="numeric" autocomplete="new-password" placeholder="Type it again" style="max-width:170px"></div>
+      <div class="hint">${settings.pinHash ? "A PIN is set. Settings and deleting records ask for it. Leave these blank to keep it." : "Optional. With a PIN, Settings and deleting records ask for it first."} At least 4 digits.</div>
+      ${settings.pinHash ? `<label style="display:flex;gap:8px;align-items:center;font-weight:500;margin-top:8px"><input type="checkbox" id="setPinOff"> Remove the PIN</label>` : ""}
+    </div></div>
     <div class="btnrow"><button class="btn primary" id="saveSettings">Save settings</button><button class="btn" id="backRecs">Cancel</button></div>
   </section>`;
 }
@@ -1136,6 +1146,29 @@ async function copyText(text){
    EVENTS
    ============================================================ */
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"), 2200); }
+/* ---------- Settings PIN ---------- */
+let pinUntil = 0;   // stays unlocked for 5 minutes after the right PIN
+async function pinHashOf(pin){
+  const txt = "ncw-rounds:" + pin;
+  try { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(txt)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+  catch(e){ let h = 5381; for (const c of txt) h = ((h << 5) + h + c.charCodeAt(0)) >>> 0; return "d" + h.toString(16); }
+}
+function withPin(action){
+  if (!settings.pinHash || Date.now() < pinUntil) return action();
+  const m = document.createElement("div"); m.className = "modal";
+  m.innerHTML = `<div class="card"><p style="margin-top:0;font-size:18px;font-weight:700">Enter the Settings PIN</p>
+    <input class="ctl" id="pinIn" type="password" inputmode="numeric" autocomplete="off" style="width:100%;font-size:22px;letter-spacing:6px;text-align:center">
+    <p class="hint" id="pinMsg" style="min-height:1.2em"></p>
+    <div class="btnrow" style="justify-content:flex-end"><button class="btn" data-x>Cancel</button><button class="btn primary" data-ok>Unlock</button></div></div>`;
+  document.body.appendChild(m);
+  const inp = m.querySelector("#pinIn"); setTimeout(()=>inp.focus(), 50);
+  const tryIt = async () => {
+    if (await pinHashOf(inp.value.trim()) === settings.pinHash){ pinUntil = Date.now() + 5*60*1000; m.remove(); action(); }
+    else { m.querySelector("#pinMsg").innerHTML = "<b style='color:var(--red)'>Wrong PIN</b>"; inp.value = ""; inp.focus(); }
+  };
+  inp.addEventListener("keydown", e=>{ if (e.key === "Enter") tryIt(); });
+  m.addEventListener("click", e=>{ if (e.target.dataset.ok!=null) tryIt(); else if (e.target.dataset.x!=null || e.target===m) m.remove(); });
+}
 function confirmBox(msg, okText, onOk){
   const m = document.createElement("div"); m.className="modal";
   m.innerHTML = `<div class="card"><p style="margin-top:0;font-size:18px">${msg}</p><div class="btnrow" style="justify-content:flex-end"><button class="btn" data-x>Cancel</button><button class="btn red" data-ok>${okText}</button></div></div>`;
@@ -1149,7 +1182,7 @@ function goPage(id, fromDetailLink){
 }
 /* ---------- text size (zooms the whole app) ---------- */
 const SIZES = [{z:1, name:"Normal"}, {z:1.3, name:"Large"}, {z:1.5, name:"Extra large"}];
-let sizeIdx = LS.get("ncw2_size", 1);
+let sizeIdx = 2;   // one size for everyone: Extra large
 let theme = LS.get("ncw2_theme", "auto");
 function applyTheme(){
   const h = new Date().getHours();
@@ -1463,7 +1496,8 @@ function resetMic(){
 const isNumBox = el => el && el.tagName==="INPUT" && (el.dataset.num || (el.classList.contains("octl") && el.getAttribute("inputmode")==="decimal")) && !el.readOnly;
 document.addEventListener("focusin", e=>{ if (isNumBox(e.target)){ micTarget = e.target; micBtn.classList.add("show"); } });
 document.addEventListener("focusout", e=>{ setTimeout(()=>{ if (!isNumBox(document.activeElement) && !micBtn.classList.contains("listening")) micBtn.classList.remove("show"); }, 150); });
-micBtn.addEventListener("pointerdown", e=>e.preventDefault());   // keep the keyboard / focus on the box
+micBtn.addEventListener("pointerdown", e=>e.preventDefault());
+micBtn.disabled = true;   // talk-to-type turned off: use the 🎤 key on the iPad keyboard   // keep the keyboard / focus on the box
 const micMsg = document.createElement("div"); micMsg.className = "micmsg";
 let micMsgTimer = null;
 function sayMic(text, keep){
@@ -1657,13 +1691,13 @@ document.addEventListener("click", e=>{
   if (t.dataset.lakerefresh){ fetchLake(true); return; }
   if (t.dataset.copy){
     const [from, to] = t.dataset.copy.split(">"); const a = val(from);
-    if (a==null || a===""){ toast("Enter the Start of Shift number first"); return; }
+    if (a==null || a===""){ toast("Enter the 1st Round number first"); return; }
     setVal(to, a); return render();
   }
   if (t.dataset.copyall){
     let n = 0;
     t.dataset.copyall.split(",").forEach(pair=>{ const [from, to] = pair.split(">"); if (filled(from) && !filled(to)){ setVal(to, val(from)); n++; } });
-    toast(n ? `Copied ${n} reading${n>1?"s":""} from the Start of Shift` : "Nothing to copy"); return render();
+    toast(n ? `Copied ${n} reading${n>1?"s":""} from the 1st Round` : "Nothing to copy"); return render();
   }
   if (t.dataset.checkall){
     const keys = t.dataset.checkall.split(","); const all = keys.every(k=>val(k));
@@ -1692,7 +1726,7 @@ document.addEventListener("click", e=>{
     case "contBtn": return goPage(started_page());
     case "newBtn": return confirmBox("Start a new round? The round in progress will be cleared.", "Start new", ()=>{ draft = newDraft(); save(); pageId = "shift"; LS.set("ncw2_page", pageId); goPage("shift"); });
     case "recTile": view = "records"; return render();
-    case "setTile": view = "settings"; return render();
+    case "setTile": return withPin(()=>{ view = "settings"; render(); });
     case "themeBtn": { const order = ["auto","dark","light"]; theme = order[(order.indexOf(theme)+1)%3]; LS.set("ncw2_theme", theme); applyTheme(); toast(THEME_NAMES[theme]); if (view==="home") render(); return; }
     case "homeBtn": view = "home"; return render();
     case "sizeBtn": sizeIdx = (sizeIdx + 1) % SIZES.length; LS.set("ncw2_size", sizeIdx); applySize(true); return;
@@ -1703,18 +1737,27 @@ document.addEventListener("click", e=>{
     case "sendNow": return sendRounds(true);
     case "sendOld": return confirmBox("Send the rounds that were submitted before the daily report was set up? They'll be added to the Rounds sheet.", "Send them", ()=>{ records.forEach(r=>{ if (r.sent==="old") r.sent=false; }); LS.set("ncw2_records", records); render(); sendRounds(true); });
     case "copyJson": return copyText(JSON.stringify(records.map(r=>({...r, photos: r.photos.length})), null, 2));
-    case "settingsBtn": view="settings"; return render();
+    case "settingsBtn": return withPin(()=>{ view="settings"; render(); });
     case "backRecs": view = (view==="settings" && !openRecordId) ? "home" : "records"; return render();
-    case "delRec": return confirmBox("Delete this record from this iPad?", "Delete", ()=>{ records = records.filter(r=>r.id!==openRecordId); LS.set("ncw2_records", records); view="records"; render(); });
-    case "saveSettings": {
+    case "delRec": return withPin(()=>confirmBox("Delete this record from this iPad?", "Delete", ()=>{ records = records.filter(r=>r.id!==openRecordId); LS.set("ncw2_records", records); view="records"; render(); }));
+    case "saveSettings": { (async () => {
+      const p1 = ($("#setPin").value||"").trim(), p2 = ($("#setPin2").value||"").trim();
+      let pinHash = settings.pinHash || "";
+      if ($("#setPinOff") && $("#setPinOff").checked) pinHash = "";
+      else if (p1 || p2){
+        if (p1.length < 4) { toast("The PIN needs at least 4 digits"); return; }
+        if (p1 !== p2) { toast("The two PINs don't match"); return; }
+        pinHash = await pinHashOf(p1);
+      }
       const ops = $("#setOps").value.split("\n").map(s=>s.trim()).filter(Boolean);
       const oos = $("#setOos").value.split(/[,\s]+/).map(Number).filter(n=>n>=1 && n<=11);
       settings = { operators: ops.length?ops:DEFAULT_SETTINGS.operators, oosFilters: oos, lakeUrl: ($("#setLake").value||"").trim(),
         ntuLimit: parseFloat($("#setNtu").value) || DEFAULT_SETTINGS.ntuLimit,
         freeMin: parseFloat($("#setMin").value) || DEFAULT_SETTINGS.freeMin,
-        freeMax: parseFloat($("#setMax").value) || DEFAULT_SETTINGS.freeMax };
-      LS.set("ncw2_settings", settings); PAGES = buildPages(settings); toast("Settings saved"); view="records"; return render();
-    }
+        freeMax: parseFloat($("#setMax").value) || DEFAULT_SETTINGS.freeMax, pinHash };
+      LS.set("ncw2_settings", settings); PAGES = buildPages(settings); pinUntil = 0;
+      toast(p1 && pinHash ? "Settings saved — PIN set" : "Settings saved"); view="records"; render();
+    })(); return; }
   }
 });
 function submit(){
